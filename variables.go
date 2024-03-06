@@ -1,5 +1,3 @@
-//go:generate goversioninfo
-
 package versioninfo
 
 var (
