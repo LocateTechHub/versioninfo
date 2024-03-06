@@ -1,3 +1,5 @@
+//go:generate echo hello
+
 package versioninfo
 
 var (
