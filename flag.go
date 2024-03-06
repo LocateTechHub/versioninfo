@@ -42,14 +42,14 @@ func PrintVersion() {
 		dirty = ""
 	}
 	shortHash := GitHash[:7]
-	fmt.Printf("version: [%s%s-%s %s] time: [%s] %s", GitBranch, dirty, shortHash, Author, formatBuildTime(), GitMessage)
+	fmt.Printf("version: [%s%s-%s %s] time: [%s] %s \n", GitBranch, dirty, shortHash, Author, formatBuildTime(), GitMessage)
 }
 
 func formatBuildTime() string {
 	if BuildTime != "unknown" {
 		bt, err := strconv.ParseInt(BuildTime, 10, 0)
 		if err == nil {
-			return time.Unix(bt, 0).Format("2006-01-02 15:04:05")
+			return time.UnixMilli(bt).Format("2006-01-02 15:04:05")
 		}
 	}
 	return BuildTime
