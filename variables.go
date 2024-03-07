@@ -1,6 +1,4 @@
-//go:generate go run build.go
-
-package version
+package versioninfo
 
 var (
 	// Version 项目版本信息
