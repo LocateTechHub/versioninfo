@@ -1,4 +1,4 @@
-package versioninfo
+package main
 
 import "fmt"
 

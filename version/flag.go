@@ -1,4 +1,4 @@
-package versioninfo
+package version
 
 import (
 	"flag"
