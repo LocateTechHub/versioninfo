@@ -14,6 +14,8 @@ func AddFlag(f *flag.FlagSet) {
 	}
 	f.BoolFunc("v", "short alias for -version", printVersion)
 	f.BoolFunc("version", "print version information and exit", printVersion)
+
+	flag.Parse()
 }
 
 func printVersion(s string) error {
