@@ -1,4 +1,4 @@
-//go:generate echo hello
+//go:generate go run build.go
 
 package versioninfo
 

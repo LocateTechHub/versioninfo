@@ -37,8 +37,8 @@ async function cmd(cmd: string, args: string[]): Promise<string | undefined> {
         const command = new Deno.Command(cmd, {
             args: args,
         });
-        const [_, output] = await command.output();
-        return decoder.decode(output).trimEnd();
+        const {stdout} = await command.output();
+        return decoder.decode(stdout).trimEnd();
     } catch {
         return undefined;
     }
