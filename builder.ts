@@ -36,7 +36,7 @@ class VersionBuilder {
             "-trimpath",
             "-o", `${this.appName}.exe`,
         ])
-        if (goOutput != "") {
+        if (goOutput) {
             console.log(goOutput);
         }
 
@@ -61,7 +61,9 @@ async function cmd(cmd: string, args: string[]): Promise<string | undefined> {
         const out = decoder.decode(stdout).trimEnd();
         const err = decoder.decode(stderr).trimEnd();
         if (err != "") {
-            console.err(err);
+            console.error("cmd: ", cmd);
+            console.error(err);
+            console.error();
         }
         return out;
     } catch {
