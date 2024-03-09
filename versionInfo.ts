@@ -50,7 +50,7 @@ class VersionInfoBuilder {
 
 
     public async build(msg?: string) {
-        const gzipBuf = Uint8Array.from(atob(versionInfoWasm), c => c.charCodeAt(0))
+        const gzipBuf = Uint8Array.from(atob(versionInfoWasm), c => c.charCodeAt(0));
 
         const srcBlob = new Blob([gzipBuf]);
         const src = srcBlob.stream();
@@ -72,6 +72,7 @@ class VersionInfoBuilder {
         if (msg) {
             this.versionInfoData.StringFileInfo.Comments = msg;
         }
+        console.log("versionInfo data");
 
         let output = genSysoFile(JSON.stringify(this.versionInfoData))
         Deno.writeFileSync("resource.syso", output)
