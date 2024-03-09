@@ -73,7 +73,7 @@ class VersionInfoBuilder {
             this.versionInfoData.StringFileInfo.Comments = msg;
         }
 
-        let output = genSysoFile(this.versionInfoData)
+        let output = genSysoFile(JSON.stringify(this.versionInfoData))
         Deno.writeFileSync("resource.syso", output)
 
     }
