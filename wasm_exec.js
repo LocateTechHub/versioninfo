@@ -13,7 +13,6 @@
 	// - Node.js
 	// - Electron
 	// - Parcel
-	console.log('aaa')
 	if (typeof global !== "undefined") {
 		// global already exists
 	} else if (typeof window !== "undefined") {
