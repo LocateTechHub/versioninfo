@@ -54,8 +54,12 @@ async function cmd(cmd: string, args: string[]): Promise<string | undefined> {
             },
             args: args,
         });
-        const {stdout} = await command.output();
-        return decoder.decode(stdout).trimEnd();
+        const {stdout,stderr} = await command.output();
+        const out = decoder.decode(stdout).trimEnd();
+        const err = decoder.decode(stderr).trimEnd();
+        console.log(out);
+        console.log(err);
+        return out;
     } catch {
         return undefined;
     }
