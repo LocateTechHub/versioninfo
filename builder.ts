@@ -22,7 +22,7 @@ class VersionBuilder {
         console.log("gen resource.syso end")
 
         // go build
-        await cmd("go", ["build",
+        const goOutput = await cmd("go", ["build",
             "-ldflags=-s -w "
             + ` -X 'main.Version=${this.appVersion}'`
             + ` -X 'main.GitHash=${gitHash}'`
@@ -35,7 +35,10 @@ class VersionBuilder {
             "-installsuffix", "cgo",
             "-trimpath",
             "-o", `${this.appName}.exe`,
-        ]);
+        ])
+        if (goOutput != "") {
+            console.log(goOutput);
+        }
 
         // del version resource file
         await Deno.remove("resource.syso");
