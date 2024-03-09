@@ -16,7 +16,7 @@ class VersionBuilder {
         const buildTime = new Date().getTime();
 
         const descriptionData = `{"gitHash":"${gitHash}","gitBranch":"${gitBranch}","gitMessage":"${gitMessage}","author":"${author}","dirty":"${dirty}","buildTime":"${buildTime}"}`
-
+        console.log(descriptionData);
         // generate version resource file
         const versionInfoBuilder = new VersionInfoBuilder();
         await versionInfoBuilder.build(descriptionData);
