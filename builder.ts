@@ -16,10 +16,10 @@ class VersionBuilder {
         const buildTime = new Date().getTime();
 
         const descriptionData = `{"gitHash":"${gitHash}","gitBranch":"${gitBranch}","gitMessage":"${gitMessage}","author":"${author}","dirty":"${dirty}","buildTime":"${buildTime}"}`
-        console.log(descriptionData);
         // generate version resource file
         const versionInfoBuilder = new VersionInfoBuilder();
         await versionInfoBuilder.build(descriptionData);
+        console.log("gen resource.syso end")
 
         // go build
         await cmd("go", ["build",
@@ -54,11 +54,12 @@ async function cmd(cmd: string, args: string[]): Promise<string | undefined> {
             },
             args: args,
         });
-        const {stdout,stderr} = await command.output();
+        const {stdout, stderr} = await command.output();
         const out = decoder.decode(stdout).trimEnd();
         const err = decoder.decode(stderr).trimEnd();
-        console.log(out);
-        console.log(err);
+        if (err != "") {
+            console.err(err);
+        }
         return out;
     } catch {
         return undefined;

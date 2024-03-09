@@ -63,8 +63,6 @@ class VersionInfoBuilder {
         });
         await src.pipeThrough(new DecompressionStream("gzip")).pipeTo(writableStream);
 
-        console.log("gzip end");
-
         const go = new window.Go();
         const inst = await WebAssembly.instantiate(wasmBuf, go.importObject);
         go.run(inst.instance);
@@ -72,7 +70,6 @@ class VersionInfoBuilder {
         if (msg) {
             this.versionInfoData.StringFileInfo.Comments = msg;
         }
-        console.log("versionInfo data");
 
         let output = genSysoFile(JSON.stringify(this.versionInfoData))
         Deno.writeFileSync("resource.syso", output)
