@@ -66,7 +66,8 @@ async function cmd(cmd: string, args: string[]): Promise<string | undefined> {
             console.error();
         }
         return out;
-    } catch {
+    } catch (e) {
+        console.error(`cmd [${cmd}] run error : `, e.toString());
         return undefined;
     }
 }
