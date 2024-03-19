@@ -24,13 +24,13 @@ class VersionBuilder {
         // go build
         const goOutput = await cmd("go", ["build",
             "-ldflags=-s -w "
-            + ` -X 'main.Version=${this.appVersion}'`
-            + ` -X 'main.GitHash=${gitHash}'`
-            + ` -X 'main.GitBranch=${gitBranch}'`
-            + ` -X 'main.GitMessage=${gitMessage}'`
-            + ` -X 'main.Author=${author}'`
-            + ` -X 'main.DirtyBuild=${dirty}'`
-            + ` -X 'main.BuildTime=${buildTime}'`
+            + ` -X 'github.com/LocateTechHub/versioninfo.Version=${this.appVersion}'`
+            + ` -X 'github.com/LocateTechHub/versioninfo.GitHash=${gitHash}'`
+            + ` -X 'github.com/LocateTechHub/versioninfo.GitBranch=${gitBranch}'`
+            + ` -X 'github.com/LocateTechHub/versioninfo.GitMessage=${gitMessage}'`
+            + ` -X 'github.com/LocateTechHub/versioninfo.Author=${author}'`
+            + ` -X 'github.com/LocateTechHub/versioninfo.DirtyBuild=${dirty}'`
+            + ` -X 'github.com/LocateTechHub/versioninfo.BuildTime=${buildTime}'`
             ,
             "-installsuffix", "cgo",
             "-trimpath",

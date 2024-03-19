@@ -1,3 +1,3 @@
-module github.com/umaYnit/versioninfo
+module github.com/LocateTechHub/versioninfo
 
 go 1.21
