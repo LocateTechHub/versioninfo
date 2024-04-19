@@ -3,6 +3,7 @@ import VersionInfoBuilder from "./versionInfo.ts";
 class VersionBuilder {
     public appName = "simple"
     public appVersion = "5.3.29"
+    public appTarget = "win"
 
 
     public async build() {
@@ -21,6 +22,10 @@ class VersionBuilder {
         await versionInfoBuilder.build(descriptionData);
         console.log("gen resource.syso end")
 
+        if (Deno.args[0]) {
+            this.appTarget = Deno.args[0];
+        }
+
         // go build
         const goOutput = await cmd("go", ["build",
             "-ldflags=-s -w "
@@ -34,8 +39,8 @@ class VersionBuilder {
             ,
             "-installsuffix", "cgo",
             "-trimpath",
-            "-o", `${this.appName}.exe`,
-        ])
+            "-o", `${this.appName}${targetMap[this.appTarget].outputSuffix}`,
+        ], targetMap[this.appTarget].env);
         if (goOutput) {
             console.log(goOutput);
         }
@@ -47,14 +52,11 @@ class VersionBuilder {
 
 // help function
 
-async function cmd(cmd: string, args: string[]): Promise<string | undefined> {
+async function cmd(cmd: string, args: string[], env?: Record<string, string>): Promise<string | undefined> {
     const decoder = new TextDecoder();
     try {
         const command = new Deno.Command(cmd, {
-            env: {
-                "GOOS": "windows",
-                "GOARCH": "amd64"
-            },
+            env: env,
             args: args,
         });
         const {stdout, stderr} = await command.output();
@@ -77,6 +79,28 @@ function safeString(str: string | undefined): string {
         return str.replaceAll("'", "\"");
     }
     return "undefined"
+}
+
+interface TargetInfo {
+    outputSuffix: string
+    env: Record<string, string>
+}
+
+const targetMap: Record<string, TargetInfo> = {
+    "win": {
+        outputSuffix: ".exe",
+        env: {
+            "GOOS": "windows",
+            "GOARCH": "amd64"
+        }
+    },
+    "linux": {
+        outputSuffix: "",
+        env: {
+            "GOOS": "linux",
+            "GOARCH": "amd64"
+        }
+    }
 }
 
 export default VersionBuilder;
