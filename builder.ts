@@ -1,12 +1,29 @@
 import VersionInfoBuilder from "./versionInfo.ts";
+import {GzipStream} from "https://deno.land/x/compress@v0.4.5/gzip/mod.ts";
+
 
 class VersionBuilder {
     public appName = "simple"
-    public appVersion = "5.3.29"
+    public appVersion = "1.0"
     public appTarget = "win"
+    public buildDocker = false
 
 
     public async build() {
+        switch (Deno.args[0]) {
+            case "docker":
+                this.appTarget = "linux";
+                this.buildDocker = true;
+                break
+            default:
+                this.appTarget = Deno.args[0];
+        }
+
+        if (Deno.args[1]) {
+            this.appVersion = Deno.args[1];
+        }
+
+
         const gitHash = await cmd("git", ["rev-parse", "HEAD"]);
         const gitBranch = safeString(await cmd("git", ["rev-parse", "--abbrev-ref", "HEAD"]));
         const gitMessage = safeString(await cmd("git", ["show", "-s", "--format=format:%s", "HEAD"]));
@@ -30,9 +47,6 @@ class VersionBuilder {
         await versionInfoBuilder.build(descriptionData);
         console.log("gen resource.syso end")
 
-        if (Deno.args[0]) {
-            this.appTarget = Deno.args[0];
-        }
 
         // go build
         const goOutput = await cmd("go", ["build",
@@ -47,7 +61,7 @@ class VersionBuilder {
             ,
             "-installsuffix", "cgo",
             "-trimpath",
-            "-o", `${this.appName}${targetMap[this.appTarget].outputSuffix}`,
+            "-o", `${this.binaryName()}`,
         ], targetMap[this.appTarget].env);
         if (goOutput) {
             console.log(goOutput);
@@ -55,8 +69,35 @@ class VersionBuilder {
 
         // del version resource file
         await Deno.remove("resource.syso");
+
+        if (this.buildDocker) {
+            await this.docker();
+        }
+
+    }
+
+    public async docker() {
+        const imageTag = `${this.appName}:${this.appVersion}`;
+
+        // build docker
+        await cmd("docker", ["build", "-t", imageTag, "."]);
+
+        const gzip = new GzipStream();
+
+        const tarFileName = `${this.appName}-${this.appVersion}.tar`;
+        await cmd("docker", ["save", imageTag, "-o", tarFileName]);
+
+        await gzip.compress(tarFileName, `${tarFileName}.gz`);
+
+        await Deno.remove(tarFileName);
+        await Deno.remove(this.binaryName());
+    }
+
+    public binaryName() {
+        return `${this.appName}${targetMap[this.appTarget].outputSuffix}`;
     }
 }
+
 
 // help function
 
