@@ -1,5 +1,5 @@
 import VersionInfoBuilder from "./versionInfo.ts";
-import {GzipStream} from "https://deno.land/x/compress@v0.4.5/gzip/mod.ts";
+import {gzipFile} from "https://deno.land/x/compress@v0.4.6/gzip/mod.ts";
 
 
 class VersionBuilder {
@@ -82,12 +82,11 @@ class VersionBuilder {
         // build docker
         await cmd("docker", ["build", "-t", imageTag, "."]);
 
-        const gzip = new GzipStream();
 
         const tarFileName = `${this.appName}-${this.appVersion}.tar`;
         await cmd("docker", ["save", imageTag, "-o", tarFileName]);
 
-        await gzip.compress(tarFileName, `${tarFileName}.gz`);
+        await gzipFile(tarFileName, `${tarFileName}.gz`);
 
         await Deno.remove(tarFileName);
         await Deno.remove(this.binaryName());
