@@ -63,7 +63,7 @@ class VersionInfoBuilder {
         });
         await src.pipeThrough(new DecompressionStream("gzip")).pipeTo(writableStream);
 
-        const go = new window.Go();
+        const go = new globalThis.Go();
         const inst = await WebAssembly.instantiate(wasmBuf, go.importObject);
         go.run(inst.instance);
 
