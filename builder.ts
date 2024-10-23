@@ -1,28 +1,44 @@
 import VersionInfoBuilder from "./versionInfo.ts";
 import {gzipFile} from "https://deno.land/x/compress@v0.4.6/gzip/mod.ts";
-
+import {parseArgs} from "jsr:@std/cli/parse-args";
+import {green} from "jsr:@std/fmt/colors";
+import "jsr:@std/dotenv/load";
+import MinioClient from "./minio.ts";
 
 class VersionBuilder {
     public appName = "simple"
+    public dockerName = "simple"
     public appVersion = "1.0"
     public appTarget = "win"
     public buildDocker = false
+    public publish = false
+    public publishBasePath = "temp"
+    private outputFile;
 
 
     public async build() {
-        switch (Deno.args[0]) {
-            case "docker":
+        const args = parseArgs(Deno.args, {
+            boolean: ["publish"],
+            alias: {publish: "p", version: "v"},
+            string: ["v"],
+        });
+
+        if (args._[0]) {
+            this.appTarget = args._[0];
+            if (args._[0] === "docker") {
                 this.appTarget = "linux";
                 this.buildDocker = true;
-                break
-            default:
-                this.appTarget = Deno.args[0];
+            }
         }
-
-        if (Deno.args[1]) {
-            this.appVersion = Deno.args[1];
+        if (args.publish) {
+            this.publish = args.publish;
         }
+        if (args.version) {
+            this.appVersion = args.version;
+        }
+        this.outputFile = this.binaryName();
 
+        console.log(green("读取项目信息..."))
 
         const gitHash = await cmd("git", ["rev-parse", "HEAD"]);
         const gitBranch = safeString(await cmd("git", ["rev-parse", "--abbrev-ref", "HEAD"]));
@@ -43,10 +59,11 @@ class VersionBuilder {
         };
         const descriptionData = JSON.stringify(descriptionDataJson);
         // generate version resource file
+
+        console.log(green("生成信息文件..."))
         const versionInfoBuilder = new VersionInfoBuilder();
         await versionInfoBuilder.build(descriptionData);
-        console.log("gen resource.syso end")
-
+        console.log(green("构建项目..."))
 
         // go build
         const goOutput = await cmd("go", ["build",
@@ -70,23 +87,47 @@ class VersionBuilder {
         // del version resource file
         await Deno.remove("resource.syso");
 
+        console.log(green("构建完成"))
+
         if (this.buildDocker) {
+            console.log(green("构建docker镜像..."))
             await this.docker();
+        }
+        if (this.publish) {
+            console.log(green("推送OSS..."))
+            const minioClient = new MinioClient({
+                endPoint: Deno.env.get("BUILDER_OSS_END_POINT"),
+                accessKey: Deno.env.get("BUILDER_OSS_ACCESS_KEY"),
+                secretKey: Deno.env.get("BUILDER_OSS_SECRET_KEY"),
+                bucket: "aries"
+            });
+            const ossFilePath = `${this.publishBasePath}/${this.outputFile}`;
+            await minioClient.uploadFile({
+                sourceFilePath: this.outputFile,
+                ossFilePath: ossFilePath,
+            });
+            console.log("bin:")
+            console.log(`http://oss.airocov.com/aries/${ossFilePath}`);
+            if (this.buildDocker) {
+                console.log("docker:");
+                console.log(`curl http://oss.airocov.com/aries/${ossFilePath}|docker load`);
+            }
         }
 
     }
 
     public async docker() {
-        const imageTag = `${this.appName}:${this.appVersion}`;
+        const imageTag = `${this.dockerName}:${this.appVersion}`;
+        const tarFileName = `${this.dockerName}-${this.appVersion}.tar`;
+        const gzFileName = `${tarFileName}.gz`;
+        this.outputFile = gzFileName;
 
         // build docker
         await cmd("docker", ["build", "-t", imageTag, "."]);
 
-
-        const tarFileName = `${this.appName}-${this.appVersion}.tar`;
         await cmd("docker", ["save", imageTag, "-o", tarFileName]);
 
-        await gzipFile(tarFileName, `${tarFileName}.gz`);
+        await gzipFile(tarFileName, `${gzFileName}`);
 
         await Deno.remove(tarFileName);
         await Deno.remove(this.binaryName());
