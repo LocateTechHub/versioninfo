@@ -1,29 +1,35 @@
-import VersionInfoBuilder from "./versionInfo.ts";
+import {VersionInfo, VersionInfoBuilder} from "./versionInfo.ts";
 import {gzipFile} from "https://deno.land/x/compress@v0.4.6/gzip/mod.ts";
 import {parseArgs} from "jsr:@std/cli/parse-args";
 import {green, red} from "jsr:@std/fmt/colors";
 import "jsr:@std/dotenv/load";
 import MinioClient from "./minio.ts";
+import {homedir} from "node:os";
+
 
 class VersionBuilder {
     public appName = "simple";
     public dockerName = "simple";
     public appVersion = "1.0";
-    public appTarget = "win";
-    public buildDocker = false;
+    public defaultTarget = "win";
+    public appDebugVersion = false;
     public publish = false;
-    public publishBasePath = "temp";
-    private outputFile;
+    public release = false;
+
+    public publishBasePath = "temp/";
+    public releaseBucket = "artifact";
+    public target = {};
+    private descriptionData: VersionInfo;
 
     mergeParam() {
         const args = parseArgs(Deno.args, {
-            boolean: ["publish"],
-            alias: {publish: "p", version: "v"},
+            boolean: ["publish", "release", "debug"],
+            alias: {publish: "p", version: "v", release: "r", debug: "d"},
             string: ["v"],
         });
 
         if (args._[0]) {
-            this.appTarget = args._[0];
+            this.defaultTarget = args._[0];
         }
         if (args.publish) {
             this.publish = args.publish;
@@ -31,13 +37,15 @@ class VersionBuilder {
         if (args.version) {
             this.appVersion = args.version;
         }
-
-        if (this.appTarget === "docker") {
-            this.appTarget = "linux";
-            this.buildDocker = true;
+        if (args.debug) {
+            this.defaultTarget = "docker";
+            this.appDebugVersion = args.debug;
         }
-
-        this.outputFile = this.binaryName();
+        if (args.release) {
+            this.appDebugVersion = false;
+            this.publish = true;
+            this.release = args.release;
+        }
     }
 
     public async build() {
@@ -59,7 +67,7 @@ class VersionBuilder {
 
         const buildTime = new Date().getTime();
 
-        const descriptionDataJson = {
+        this.descriptionData = {
             gitHash: gitHash,
             gitBranch: gitBranch,
             gitMessage: gitMessage,
@@ -67,85 +75,138 @@ class VersionBuilder {
             dirty: dirty,
             buildTime: buildTime,
         };
-        const descriptionData = JSON.stringify(descriptionDataJson);
-        // generate version resource file
 
+        const descriptionData = JSON.stringify(this.descriptionData);
+
+        // generate version resource file
         console.log(green("生成信息文件..."));
         const versionInfoBuilder = new VersionInfoBuilder();
         await versionInfoBuilder.build(descriptionData);
-        console.log(green("构建项目..."));
 
-        // go build
-        await cmd("go", [
-            "build",
-            "-ldflags=-s -w " +
-            ` -X 'github.com/LocateTechHub/versioninfo.Version=${this.appVersion}'` +
-            ` -X 'github.com/LocateTechHub/versioninfo.GitHash=${gitHash}'` +
-            ` -X 'github.com/LocateTechHub/versioninfo.GitBranch=${gitBranch}'` +
-            ` -X 'github.com/LocateTechHub/versioninfo.GitMessage=${gitMessage}'` +
-            ` -X 'github.com/LocateTechHub/versioninfo.Author=${author}'` +
-            ` -X 'github.com/LocateTechHub/versioninfo.DirtyBuild=${dirty}'` +
-            ` -X 'github.com/LocateTechHub/versioninfo.BuildTime=${buildTime}'`,
-            "-installsuffix",
-            "cgo",
-            "-trimpath",
-            "-o",
-            `${this.binaryName()}`,
-        ], targetMap[this.appTarget].env);
+        if (this.release) {
+            await this._release();
+        } else {
+            // go build
+            await this._build(this.defaultTarget);
+        }
 
         // del version resource file
         await Deno.remove("resource.syso");
+    }
 
-        console.log(green("构建完成"));
+    public async _release() {
+        for (const [target, publishPaths] of Object.entries(this.target.releasePath)) {
+            let goPath = this.target?.goPath?.[target] ?? targetInfoMap[target]?.goPath;
+            let outputFile = await this.doBuild(target, goPath);
 
-        if (this.buildDocker) {
-            console.log(green("构建docker镜像..."));
-            await this.docker();
-            console.log(green("docker镜像构建完成"));
-        }
-        if (this.publish) {
-            console.log(green("推送OSS..."));
-            const minioClient = new MinioClient({
-                endPoint: Deno.env.get("BUILDER_OSS_END_POINT"),
-                accessKey: Deno.env.get("BUILDER_OSS_ACCESS_KEY"),
-                secretKey: Deno.env.get("BUILDER_OSS_SECRET_KEY"),
-                bucket: "aries",
-            });
-            const ossFilePath = `${this.publishBasePath}/${this.outputFile}`;
-            await minioClient.uploadFile({
-                sourceFilePath: this.outputFile,
-                ossFilePath: ossFilePath,
-            });
-            console.log("bin:");
-            console.log(`http://oss.airocov.com/aries/${ossFilePath}`);
-            if (this.buildDocker) {
-                console.log("docker:");
-                console.log(
-                    `curl http://oss.airocov.com/aries/${ossFilePath}|docker load`,
-                );
+            for (let publishPath of publishPaths) {
+                publishPath = publishPath ?? this.publishBasePath;
+                const ossFilePath = `${publishPath}${outputFile}`;
+                let remoteUrl = await this.pushToOss(outputFile, ossFilePath, this.releaseBucket);
+                console.log(`${target} release to ${remoteUrl}`);
             }
         }
     }
 
-    public async docker() {
+    public async _build(target: string, goPath?: string, publishPath?: string, bucket?: string) {
+        let outputFile = await this.doBuild(target, goPath);
+        if (this.publish) {
+            publishPath = publishPath ?? this.publishBasePath;
+            const ossFilePath = `/${publishPath}${outputFile}`;
+            let remoteUrl = await this.pushToOss(outputFile, ossFilePath, bucket);
+            console.log("bin:");
+            console.log(remoteUrl);
+            if (this.targetDocker(target)) {
+                console.log("docker:");
+                console.log(`curl ${remoteUrl}|docker load`);
+            }
+        }
+    }
+
+    public async doBuild(target: string, goPath?: string) {
+        let outputFile = this.binaryName(target);
+
+        console.log(green("构建项目..."));
+
+        if (!this.appDebugVersion) {
+            await this.goBuild(target, goPath);
+        }
+
+        if (this.targetDocker(target)) {
+            console.log(green("构建docker镜像..."));
+            outputFile = await this.dockerBuild();
+            console.log(green("docker镜像构建完成"));
+        }
+        return outputFile;
+    }
+
+    public async goBuild(target: string, goPath?: string) {
+        goPath = goPath ?? "go";
+        await cmd(goPath, [
+            "build",
+            "-ldflags=-s -w " +
+            ` -X 'github.com/LocateTechHub/versioninfo.Version=${this.appVersion}'` +
+            ` -X 'github.com/LocateTechHub/versioninfo.GitHash=${this.descriptionData.gitHash}'` +
+            ` -X 'github.com/LocateTechHub/versioninfo.GitBranch=${this.descriptionData.gitBranch}'` +
+            ` -X 'github.com/LocateTechHub/versioninfo.GitMessage=${this.descriptionData.gitMessage}'` +
+            ` -X 'github.com/LocateTechHub/versioninfo.Author=${this.descriptionData.author}'` +
+            ` -X 'github.com/LocateTechHub/versioninfo.DirtyBuild=${this.descriptionData.dirty}'` +
+            ` -X 'github.com/LocateTechHub/versioninfo.BuildTime=${this.descriptionData.buildTime}'`,
+            "-installsuffix",
+            "cgo",
+            "-trimpath",
+            "-o",
+            `${this.binaryName(target)}`,
+        ], targetInfoMap[target].env);
+        console.log(green("构建完成"));
+    }
+
+    public async pushToOss(filePath: string, ossPath: string, bucket?: string): string {
+        console.log(green("推送OSS..."));
+        bucket = bucket ?? "aries";
+
+        const minioClient = new MinioClient({
+            endPoint: Deno.env.get("BUILDER_OSS_END_POINT"),
+            accessKey: Deno.env.get("BUILDER_OSS_ACCESS_KEY"),
+            secretKey: Deno.env.get("BUILDER_OSS_SECRET_KEY"),
+            bucket: bucket,
+        });
+        await minioClient.uploadFile({
+            sourceFilePath: filePath,
+            ossFilePath: ossPath,
+            descriptionData: this.descriptionData,
+        });
+
+        return `http://oss.airocov.com/${bucket}/${ossPath}`;
+    }
+
+    public async dockerBuild(): string {
         const imageTag = `${this.dockerName}:${this.appVersion}`;
-        const tarFileName = `${this.dockerName}-${this.appVersion}.tar`;
+        const tarFileName = `${this.dockerName}.tar`;
         const gzFileName = `${tarFileName}.gz`;
-        this.outputFile = gzFileName;
 
         // build docker
-        await cmd("docker", ["build", "-t", imageTag, "."]);
+        if (!this.appDebugVersion) {
+            await cmd("docker", ["build", "-t", imageTag, "."]);
+        } else {
+            await cmd("docker", ["build", "-f", "Dockerfile-debug", "-t", imageTag, "."]);
+        }
 
         await cmd("docker", ["save", imageTag, "-o", tarFileName]);
 
         await gzipFile(tarFileName, `${gzFileName}`);
 
         await Deno.remove(tarFileName);
-        await Deno.remove(this.binaryName());
+
+        return gzFileName;
     }
 
-    public binaryName() {
-        return `${this.appName}${targetMap[this.appTarget].outputSuffix}`;
+    public binaryName(target: string): string {
+        return `${this.appName}${targetInfoMap[target].outputSuffix}`;
+    }
+
+    public targetDocker(target: string): boolean {
+        return target === "docker";
     }
 }
 
@@ -206,11 +267,12 @@ function safeString(str: string | undefined): string {
 }
 
 interface TargetInfo {
+    goPath?: string,
     outputSuffix: string;
     env: Record<string, string>;
 }
 
-const targetMap: Record<string, TargetInfo> = {
+const targetInfoMap: Record<string, TargetInfo> = {
     "win": {
         outputSuffix: ".exe",
         env: {
@@ -218,7 +280,23 @@ const targetMap: Record<string, TargetInfo> = {
             "GOARCH": "amd64",
         },
     },
+    "win7": {
+        goPath: homedir() + "/sdk/go1.21.0/bin/go.exe",
+        outputSuffix: ".exe",
+        env: {
+            "GOROOT": homedir() + "/sdk/go1.21.0",
+            "GOOS": "windows",
+            "GOARCH": "amd64",
+        },
+    },
     "linux": {
+        outputSuffix: "",
+        env: {
+            "GOOS": "linux",
+            "GOARCH": "amd64",
+        },
+    },
+    "docker": {
         outputSuffix: "",
         env: {
             "GOOS": "linux",

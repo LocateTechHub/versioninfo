@@ -1,6 +1,15 @@
 import versionInfoWasm from "./versionInfoWasm.js";
 import "./wasm_exec.js";
 
+type VersionInfo = {
+    gitHash: string,
+    gitBranch: string,
+    gitMessage: string,
+    author: string,
+    dirty: boolean,
+    buildTime: number
+}
+
 class VersionInfoBuilder {
     public versionInfoData = {
         "FixedFileInfo": {
@@ -76,4 +85,4 @@ class VersionInfoBuilder {
     }
 }
 
-export default VersionInfoBuilder;
+export  {VersionInfo, VersionInfoBuilder};
