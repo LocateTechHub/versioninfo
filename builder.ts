@@ -252,7 +252,6 @@ async function cmd(
         stderr: "piped",
         stdout: "piped",
     });
-    console.log(env)
     const process = command.spawn();
 
     process.stdout.pipeTo(Deno.stdout.writable, {preventClose: true});
