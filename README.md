@@ -19,3 +19,38 @@ BUILDER_OSS_SECRET_KEY=xxx
 ```shell
 deno run -A build.ts [target] [-p] [-v [x.x.x]]
 ```
+
+
+
+### windows7构建
+build.ts示例
+```typescript
+import VersionBuilder from "./builder.ts";
+
+const builder = new VersionBuilder();
+
+builder.target = {
+    goPath: {
+        win7: "xxx",
+    },
+    releasePath: {
+        win7: ["general/engine/v1/win7/"],
+        win: ["general/engine/v1/win10/"],
+        docker: ["general/engine/v1/docker/"],
+    },
+}
+
+
+builder.appName = "example-app";
+builder.dockerName = "example-app";
+builder.appVersion = "2.1";
+await builder.build();
+```
+
+示例中，builder.target.goPath.win7用来设置windows7的compiler可执行文件
+
+默认情况下，win7构建读取以下环境变量：
+- GO_21       指定win7构建的compiler
+- GO_21_HOME  指定win7构建的ROOT_PATH
+
+
