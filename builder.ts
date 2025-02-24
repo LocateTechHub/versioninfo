@@ -3,8 +3,11 @@ import {gzipFile} from "https://deno.land/x/compress@v0.4.6/gzip/mod.ts";
 import {parseArgs} from "jsr:@std/cli/parse-args";
 import {green, red} from "jsr:@std/fmt/colors";
 import "jsr:@std/dotenv/load";
+import { Logger } from "jsr:@deno-library/logger";
 import MinioClient from "./minio.ts";
 import {homedir} from "node:os";
+
+const logger = new Logger();
 
 
 class VersionBuilder {
@@ -51,7 +54,7 @@ class VersionBuilder {
     public async build() {
         this.mergeParam();
 
-        console.log(green("读取项目信息..."));
+        logger.info(green("读取项目信息..."));
 
         const gitHash = await cmdWithOutput("git", ["rev-parse", "HEAD"]);
         const gitBranch = safeString(
@@ -79,7 +82,7 @@ class VersionBuilder {
         const descriptionData = JSON.stringify(this.descriptionData);
 
         // generate version resource file
-        console.log(green("生成信息文件..."));
+        logger.info(green("生成信息文件..."));
         const versionInfoBuilder = new VersionInfoBuilder();
         await versionInfoBuilder.build(descriptionData);
 
@@ -103,7 +106,7 @@ class VersionBuilder {
                 publishPath = publishPath ?? this.publishBasePath;
                 const ossFilePath = `${publishPath}${outputFile}`;
                 let remoteUrl = await this.pushToOss(outputFile, ossFilePath, this.releaseBucket);
-                console.log(`${target} release to ${remoteUrl}`);
+                logger.info(`${target} release to ${remoteUrl}`);
             }
         }
     }
@@ -112,13 +115,13 @@ class VersionBuilder {
         let outputFile = await this.doBuild(target, goPath);
         if (this.publish) {
             publishPath = publishPath ?? this.publishBasePath;
-            const ossFilePath = `/${publishPath}${outputFile}`;
+            const ossFilePath = `${publishPath}${outputFile}`;
             let remoteUrl = await this.pushToOss(outputFile, ossFilePath, bucket);
-            console.log("bin:");
-            console.log(remoteUrl);
+            logger.info("bin:");
+            logger.info(remoteUrl);
             if (this.targetDocker(target)) {
-                console.log("docker:");
-                console.log(`curl ${remoteUrl}|docker load`);
+                logger.info("Docker image import command is:");
+                logger.info(`curl ${remoteUrl} | docker load`);
             }
         }
     }
@@ -126,16 +129,16 @@ class VersionBuilder {
     public async doBuild(target: string, goPath?: string) {
         let outputFile = this.binaryName(target);
 
-        console.log(green("构建项目..."));
+        logger.info(green("构建项目..."));
 
         if (!this.appDebugVersion) {
             await this.goBuild(target, goPath);
         }
 
         if (this.targetDocker(target)) {
-            console.log(green("构建docker镜像..."));
+            logger.info(green("构建docker镜像..."));
             outputFile = await this.dockerBuild();
-            console.log(green("docker镜像构建完成"));
+            logger.info(green("docker镜像构建完成"));
         }
         return outputFile;
     }
@@ -158,11 +161,11 @@ class VersionBuilder {
             "-o",
             `${this.binaryName(target)}`,
         ], targetInfoMap[target].env);
-        console.log(green("构建完成"));
+        logger.info(green("构建完成"));
     }
 
     public async pushToOss(filePath: string, ossPath: string, bucket?: string): string {
-        console.log(green("推送OSS..."));
+        logger.info(green("推送OSS..."));
         bucket = bucket ?? "aries";
 
         const minioClient = new MinioClient({
@@ -182,7 +185,7 @@ class VersionBuilder {
 
     public async dockerBuild(): string {
         const imageTag = `${this.dockerName}:${this.appVersion}`;
-        const tarFileName = `${this.dockerName}.tar`;
+        const tarFileName = `${this.dockerName}-${this.appVersion}.tar`;
         const gzFileName = `${tarFileName}.gz`;
 
         // build docker

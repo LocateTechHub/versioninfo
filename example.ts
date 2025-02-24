@@ -1,10 +1,10 @@
-import VersionBuilder from "https://raw.githubusercontent.com/LocateTechHub/versioninfo/v0.1.8/builder.ts";
+import VersionBuilder from "./builder.ts";
 
 const builder = new VersionBuilder();
 
 builder.target = {
     goPath: {
-        win7: "xxx",
+        // win7: "xxx",
     },
     releasePath: {
         win7: ["general/engine/v1/win7/"],
