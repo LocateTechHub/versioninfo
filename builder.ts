@@ -252,6 +252,7 @@ async function cmd(
         stderr: "piped",
         stdout: "piped",
     });
+    console.log(env)
     const process = command.spawn();
 
     process.stdout.pipeTo(Deno.stdout.writable, {preventClose: true});
@@ -284,10 +285,10 @@ const targetInfoMap: Record<string, TargetInfo> = {
         },
     },
     "win7": {
-        goPath: homedir() + "/sdk/go1.21.0/bin/go.exe",
+        goPath: Deno.env.get("GO_21"),
         outputSuffix: ".exe",
         env: {
-            "GOROOT": homedir() + "/sdk/go1.21.0",
+            "GOROOT": Deno.env.get("GO_21_HOME"),
             "GOOS": "windows",
             "GOARCH": "amd64",
         },
