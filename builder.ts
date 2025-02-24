@@ -5,7 +5,6 @@ import {green, red} from "jsr:@std/fmt/colors";
 import "jsr:@std/dotenv/load";
 import { Logger } from "jsr:@deno-library/logger";
 import MinioClient from "./minio.ts";
-import {homedir} from "node:os";
 
 const logger = new Logger();
 
@@ -120,8 +119,8 @@ class VersionBuilder {
             logger.info("bin:");
             logger.info(remoteUrl);
             if (this.targetDocker(target)) {
-                logger.info("Docker image import command is:");
-                logger.info(`curl ${remoteUrl} | docker load`);
+                logger.info(`Docker image import command is:\n curl ${remoteUrl} | docker load`);
+                logger.info();
             }
         }
     }

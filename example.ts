@@ -1,4 +1,4 @@
-import VersionBuilder from "./builder.ts";
+import VersionBuilder from './builder.ts';
 
 const builder = new VersionBuilder();
 
