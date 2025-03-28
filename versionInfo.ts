@@ -2,13 +2,14 @@ import versionInfoWasm from "./versionInfoWasm.js";
 import "./wasm_exec.js";
 
 type VersionInfo = {
-    gitHash: string,
-    gitBranch: string,
-    gitMessage: string,
-    author: string,
-    dirty: boolean,
-    buildTime: number
-}
+    gitHash: string | undefined;
+    gitBranch: string;
+    gitMessage: string;
+    author: string;
+    dirty: boolean;
+    buildTime: number;
+    appVersion: string;
+};
 
 class VersionInfoBuilder {
     public versionInfoData = {
@@ -85,4 +86,4 @@ class VersionInfoBuilder {
     }
 }
 
-export  {VersionInfo, VersionInfoBuilder};
+export { VersionInfo, VersionInfoBuilder };

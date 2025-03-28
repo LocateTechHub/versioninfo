@@ -44,7 +44,7 @@ func PrintVersion() {
 		dirty = ""
 	}
 	shortHash := GitHash[:7]
-	fmt.Printf("version: [%s%s-%s %s] time: [%s] %s \n", GitBranch, dirty, shortHash, Author, formatBuildTime(), GitMessage)
+	fmt.Printf("appVersion: [%s] buildVersion: [%s%s-%s %s] buildTime: [%s] %s \n", Version, GitBranch, dirty, shortHash, Author, formatBuildTime(), GitMessage)
 }
 
 func formatBuildTime() string {

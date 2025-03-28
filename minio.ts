@@ -1,12 +1,12 @@
-import {Client} from "npm:minio";
-import {encodeBase64} from "jsr:@std/encoding/base64";
-import {VersionInfo} from "./versionInfo.ts";
+import { Client } from "npm:minio@8.0.5";
+import { encodeBase64 } from "jsr:@std/encoding/base64";
+import { VersionInfo } from "./versionInfo.ts";
 
 export default class MinioClient {
     public minioClient: Client;
     public defaultBucket: string;
 
-    constructor({endPoint, accessKey, secretKey, bucket}: {
+    constructor({ endPoint, accessKey, secretKey, bucket }: {
         endPoint: string;
         accessKey: string;
         secretKey: string;
@@ -22,7 +22,7 @@ export default class MinioClient {
         this.minioClient = new Client(params);
     }
 
-    async uploadFile({sourceFilePath, ossFilePath, bucket, descriptionData}: {
+    async uploadFile({ sourceFilePath, ossFilePath, bucket, descriptionData }: {
         sourceFilePath: string;
         ossFilePath: string;
         bucket?: string;
@@ -39,17 +39,26 @@ export default class MinioClient {
             throw new Error("bucket not exists");
         }
 
-        const metaData = {
-            "e-description": encodeBase64(JSON.stringify(descriptionData)),
-            "e-git-branch": descriptionData.gitBranch,
-            "e-git-hash": descriptionData.gitHash,
-            "e-build-time": descriptionData.buildTime,
+        let metaData = {};
+        if (descriptionData) {
+            metaData = {
+                "e-description": encodeBase64(JSON.stringify(descriptionData)),
+                "e-git-branch": descriptionData.gitBranch,
+                "e-git-hash": descriptionData.gitHash,
+                "e-build-time": descriptionData.buildTime,
+                "e-app-version": descriptionData.appVersion,
+            };
         }
 
-        await this.minioClient.fPutObject(bucket, ossFilePath, sourceFilePath, metaData);
+        await this.minioClient.fPutObject(
+            bucket,
+            ossFilePath,
+            sourceFilePath,
+            metaData,
+        );
         console.log(
             "File " + sourceFilePath + " uploaded as object " + ossFilePath +
-            " in bucket " + bucket,
+                " in bucket " + bucket,
         );
     }
 }

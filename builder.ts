@@ -5,6 +5,8 @@ import {green, red} from "jsr:@std/fmt/colors";
 import "jsr:@std/dotenv/load";
 import { Logger } from "jsr:@deno-library/logger";
 import MinioClient from "./minio.ts";
+import {emojiConv} from "https://x.nest.land/DeMoji@0.1.0/src/main.ts"
+
 
 const logger = new Logger();
 
@@ -21,7 +23,7 @@ class VersionBuilder {
     public publishBasePath = "temp/";
     public releaseBucket = "artifact";
     public target = {};
-    private descriptionData: VersionInfo;
+    private descriptionData: VersionInfo | undefined;
 
     mergeParam() {
         const args = parseArgs(Deno.args, {
@@ -76,6 +78,7 @@ class VersionBuilder {
             author: author,
             dirty: dirty,
             buildTime: buildTime,
+            appVersion: this.appVersion,
         };
 
         const descriptionData = JSON.stringify(this.descriptionData);
@@ -119,7 +122,7 @@ class VersionBuilder {
             logger.info("bin:");
             logger.info(remoteUrl);
             if (this.targetDocker(target)) {
-                logger.info(`Docker image import command is:\n curl ${remoteUrl} | docker load`);
+                logger.info(`${emojiConv(":)")}Docker image import command is:\n curl ${remoteUrl} | docker load`);
                 logger.info();
             }
         }
