@@ -55,7 +55,7 @@ class VersionBuilder {
     public async build() {
         this.mergeParam();
 
-        logger.info(green("读取项目信息..."));
+        logger.info(("读取项目信息..."));
 
         const gitHash = await cmdWithOutput("git", ["rev-parse", "HEAD"]);
         const gitBranch = safeString(
@@ -84,7 +84,7 @@ class VersionBuilder {
         const descriptionData = JSON.stringify(this.descriptionData);
 
         // generate version resource file
-        logger.info(green("生成信息文件..."));
+        logger.info(("生成信息文件..."));
         const versionInfoBuilder = new VersionInfoBuilder();
         await versionInfoBuilder.build(descriptionData);
 
@@ -117,13 +117,11 @@ class VersionBuilder {
         let outputFile = await this.doBuild(target, goPath);
         if (this.publish) {
             publishPath = publishPath ?? this.publishBasePath;
-            const ossFilePath = `${publishPath}${outputFile}`;
+            const ossFilePath = `${publishPath}${this.descriptionData.gitHash.substring(0,5)}/${outputFile}`;
             let remoteUrl = await this.pushToOss(outputFile, ossFilePath, bucket);
-            logger.info("bin:");
-            logger.info(remoteUrl);
+            logger.info(`⬇️Download url: \n${remoteUrl}`);
             if (this.targetDocker(target)) {
-                logger.info(`${emojiConv(":)")}Docker image import command is:\n curl ${remoteUrl} | docker load`);
-                logger.info();
+                logger.info(`🚢Docker image import command is:\ncurl ${remoteUrl} | docker load`);
             }
         }
     }
@@ -131,16 +129,16 @@ class VersionBuilder {
     public async doBuild(target: string, goPath?: string) {
         let outputFile = this.binaryName(target);
 
-        logger.info(green("构建项目..."));
+        logger.info("构建项目...");
 
         if (!this.appDebugVersion) {
             await this.goBuild(target, goPath);
         }
 
         if (this.targetDocker(target)) {
-            logger.info(green("构建docker镜像..."));
+            logger.info("构建Docker镜像...");
             outputFile = await this.dockerBuild();
-            logger.info(green("docker镜像构建完成"));
+            logger.info("✔️Docker镜像构建完成");
         }
         return outputFile;
     }
@@ -163,11 +161,11 @@ class VersionBuilder {
             "-o",
             `${this.binaryName(target)}`,
         ], targetInfoMap[target].env);
-        logger.info(green("构建完成"));
+        logger.info("✔️构建完成");
     }
 
     public async pushToOss(filePath: string, ossPath: string, bucket?: string): string {
-        logger.info(green("推送OSS..."));
+        logger.info("☁️推送OSS...");
         bucket = bucket ?? "aries";
 
         const minioClient = new MinioClient({

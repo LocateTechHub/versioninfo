@@ -56,9 +56,5 @@ export default class MinioClient {
             sourceFilePath,
             metaData,
         );
-        console.log(
-            "File " + sourceFilePath + " uploaded as object " + ossFilePath +
-                " in bucket " + bucket,
-        );
     }
 }
