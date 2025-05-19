@@ -1,11 +1,10 @@
 import {VersionInfo, VersionInfoBuilder} from "./versionInfo.ts";
 import {gzipFile} from "https://deno.land/x/compress@v0.4.6/gzip/mod.ts";
 import {parseArgs} from "jsr:@std/cli/parse-args";
-import {green, red} from "jsr:@std/fmt/colors";
+import {red} from "jsr:@std/fmt/colors";
 import "jsr:@std/dotenv/load";
 import { Logger } from "jsr:@deno-library/logger";
 import MinioClient from "./minio.ts";
-import {emojiConv} from "https://x.nest.land/DeMoji@0.1.0/src/main.ts"
 
 
 const logger = new Logger();
