@@ -117,7 +117,7 @@ class VersionBuilder {
         if (this.publish) {
             publishPath = publishPath ?? this.publishBasePath;
             const ossFilePath = `${publishPath}${this.descriptionData.gitHash.substring(0,5)}/${outputFile}`;
-            let remoteUrl = await this.pushToOss(outputFile, ossFilePath, bucket);
+            const remoteUrl = await this.pushToOss(outputFile, ossFilePath, bucket);
             logger.info(`⬇️Download url: \n${remoteUrl}`);
             if (this.targetDocker(target)) {
                 logger.info(`🚢Docker image import command is:\ncurl ${remoteUrl} | docker load`);
@@ -136,7 +136,7 @@ class VersionBuilder {
 
         if (this.targetDocker(target)) {
             logger.info("构建Docker镜像...");
-            outputFile = await this.dockerBuild();
+            outputFile = this.dockerBuild();
             logger.info("✔️Docker镜像构建完成");
         }
         return outputFile;
@@ -253,8 +253,8 @@ async function cmd(
     });
     const process = command.spawn();
 
-    process.stdout.pipeTo(Deno.stdout.writable, {preventClose: true});
-    process.stderr.pipeTo(Deno.stderr.writable, {preventClose: true});
+    await process.stdout.pipeTo(Deno.stdout.writable, {preventClose: true});
+    await process.stderr.pipeTo(Deno.stderr.writable, {preventClose: true});
 
     if (!(await process.status).success) {
         throw new Error(red(`${cmd} not successfully.`));
